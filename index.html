@@ -3,129 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>漫步 V9 - 终极除虫版</title>
+    <title>漫步 V10 - 暴力修正版</title>
     <style>
-        /* --- 基础样式 --- */
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; color: white; user-select: none; }
+        /* --- 全局 --- */
+        body, html { margin:0; padding:0; width:100%; height:100%; background:#000; overflow:hidden; font-family:sans-serif; user-select:none; -webkit-tap-highlight-color:transparent; }
         
-        /* 视频 */
-        #vid-wrap { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; display: flex; align-items: center; justify-content: center; }
-        video { width: 100%; height: 100%; object-fit: cover; transition: transform 0.1s linear; }
+        /* 视频：无缩放，仅位移 */
+        #v-box { position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; display:flex; align-items:center; justify-content:center; }
+        video { width:100%; height:100%; object-fit:cover; transition:transform 0.05s linear; }
 
-        /* UI */
-        #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; text-shadow: 0 1px 3px black; }
+        /* UI：全透明，强阴影 */
+        #ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; text-shadow:0 1px 4px rgba(0,0,0,0.9); color:white; }
         
-        .top { padding: 20px; display: flex; justify-content: space-between; }
-        .big-txt { font-size: 48px; font-weight: 800; font-variant-numeric: tabular-nums; }
-        .lbl { font-size: 12px; color: #ccc; font-weight: bold; }
-        .sub-txt { font-size: 16px; color: #00e676; font-weight: bold; }
+        .top { padding:20px; display:flex; justify-content:space-between; }
+        .b-txt { font-size:50px; font-weight:800; line-height:1; }
+        .s-txt { font-size:12px; font-weight:bold; color:#ccc; }
+        .g-txt { font-size:16px; font-weight:bold; color:#00e676; margin-top:5px; }
         
-        /* 心跳指示灯 (调试用) */
-        .debug-dot { width: 10px; height: 10px; background: #333; border-radius: 50%; display: inline-block; margin-right: 5px; border: 1px solid #555; }
-        .debug-dot.lit { background: #f00; box-shadow: 0 0 8px #f00; }
+        .btm { padding:20px; pointer-events:auto; background:linear-gradient(to top, rgba(0,0,0,0.8), transparent); }
+        .bar-c { width:100%; height:8px; background:rgba(255,255,255,0.2); border-radius:4px; overflow:hidden; }
+        .bar-f { width:0%; height:100%; background:#00e676; transition:width 0.2s; }
+        .tm { text-align:right; font-size:12px; margin-bottom:5px; opacity:0.8; }
 
-        .btm { padding: 20px; pointer-events: auto; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); }
-        .prog-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; overflow: hidden; }
-        .prog-fg { width: 0%; height: 100%; background: #00e676; transition: width 0.2s; }
-        .info-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+        /* 设置 */
+        #set { position:absolute; bottom:0; left:0; width:100%; background:rgba(10,10,10,0.95); border-top:1px solid #333; border-radius:15px 15px 0 0; padding:20px; box-sizing:border-box; transform:translateY(110%); transition:transform 0.2s; z-index:20; pointer-events:auto; color:white; }
+        #set.show { transform:translateY(0); }
+        .ln { margin-bottom:20px; }
+        .hd { display:flex; justify-content:space-between; font-size:14px; color:#aaa; margin-bottom:10px; }
+        .vl { color:#00e676; }
+        input[type=range] { width:100%; height:5px; background:#333; -webkit-appearance:none; border-radius:3px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; background:white; border-radius:50%; }
 
-        /* 抽屉 */
-        #drawer { position: absolute; bottom: 0; left: 0; width: 100%; background: #111; padding: 20px; box-sizing: border-box; transform: translateY(110%); transition: transform 0.3s; z-index: 20; pointer-events: auto; border-top: 1px solid #333; border-radius: 15px 15px 0 0; }
-        #drawer.open { transform: translateY(0); }
-        
-        .row { margin-bottom: 20px; }
-        .row-head { display: flex; justify-content: space-between; color: #aaa; font-size: 14px; margin-bottom: 8px; }
-        .val { color: #00e676; }
-        input[type=range] { width: 100%; height: 5px; background: #333; -webkit-appearance: none; border-radius: 3px; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: white; border-radius: 50%; }
-
-        /* 启动页 */
-        #start { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .btn { padding: 15px 40px; border-radius: 50px; font-size: 18px; font-weight: bold; border: none; margin: 10px; cursor: pointer; }
-        .btn-green { background: #00e676; color: black; }
-        .btn-blue { background: #2196F3; color: white; }
-        .btn-sm { padding: 8px 16px; font-size: 12px; background: #333; color: #ddd; border: 1px solid #555; }
+        /* 启动 */
+        #boot { position:absolute; top:0; left:0; width:100%; height:100%; background:#000; z-index:99; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+        .btn { padding:15px 30px; border-radius:40px; border:none; font-size:16px; font-weight:bold; margin:10px; cursor:pointer; }
+        .btn-g { background:#00e676; color:black; }
+        .btn-b { background:#2196F3; color:white; }
+        .btn-s { background:rgba(255,255,255,0.1); border:1px solid #555; color:#ddd; padding:8px 16px; font-size:12px; }
 
     </style>
 </head>
 <body>
 
-    <div id="start">
-        <h1 style="color:#00e676">漫步 V9</h1>
-        <p style="color:#666; font-size:12px; margin-bottom:30px">强制归零 · 瞬时响应 · 心跳监测</p>
-        <button class="btn btn-blue" onclick="document.getElementById('upl').click()">1. 选视频</button>
-        <input type="file" id="upl" accept="video/*" style="display:none" onchange="fileReady(this)">
-        <div id="fname" style="color:#00e676; font-size:12px; height:20px;"></div>
-        <button id="go" class="btn btn-green" onclick="run()" disabled style="opacity:0.3">2. 开始</button>
+    <div id="boot">
+        <h1 style="color:#00e676">漫步 V10</h1>
+        <p style="color:#777; font-size:12px; margin-bottom:30px">低速屏蔽 · 双步唤醒 · 绝对防卡死</p>
+        <button class="btn btn-b" onclick="document.getElementById('fi').click()">1. 选视频</button>
+        <input type="file" id="fi" accept="video/*" style="display:none" onchange="onF(this)">
+        <div id="fn" style="color:#00e676; font-size:12px; height:20px;"></div>
+        <button id="go" class="btn btn-g" onclick="start()" disabled style="opacity:0.3">2. 启动</button>
     </div>
 
-    <div id="vid-wrap"><video id="vid" playsinline loop muted webkit-playsinline></video></div>
+    <div id="v-box"><video id="vid" playsinline loop muted webkit-playsinline></video></div>
 
-    <div id="hud" style="display:none">
+    <div id="ui" style="display:none">
         <div class="top">
             <div>
-                <div class="big-txt" id="spd">0.0</div>
-                <div class="lbl">时速 km/h</div>
-                <div class="sub-txt" id="rate">0.0 x</div>
+                <div class="b-txt" id="dsp-s">0.0</div>
+                <div class="s-txt">时速 km/h</div>
+                <div class="g-txt" id="dsp-r">0.0 x</div>
             </div>
             <div style="text-align:right">
-                <div class="big-txt" id="step">0</div>
-                <div class="lbl"><span class="debug-dot" id="dot"></span> 步数</div>
-                <div class="sub-txt" id="dist">0.00 km</div>
+                <div class="b-txt" id="dsp-st">0</div>
+                <div class="s-txt">步数</div>
+                <div class="g-txt" id="dsp-d">0.00 km</div>
             </div>
         </div>
         <div class="btm">
-            <div class="info-row"><span id="tc">0:00</span><span id="tt">0:00</span></div>
-            <div class="prog-bg"><div class="prog-fg" id="bar"></div></div>
+            <div class="tm"><span id="tc">0:00</span> / <span id="tt">0:00</span></div>
+            <div class="bar-c"><div class="bar-f" id="pb"></div></div>
             <div style="text-align:right; margin-top:10px">
-                <button class="btn-sm" onclick="toggle()">⚙️ 设置</button>
+                <button class="btn-s" onclick="tSet()">⚙️ 设置</button>
             </div>
         </div>
     </div>
 
-    <div id="drawer">
-        <div style="display:flex;justify-content:space-between;margin-bottom:20px"><h3>设置</h3><span onclick="toggle()" style="font-size:20px">×</span></div>
-        <div class="row"><div class="row-head"><span>原视频速度</span><span class="val" id="vb">5</span></div><input type="range" min="2" max="15" value="5" oninput="sc('base',this.value)"></div>
-        <div class="row"><div class="row-head"><span>步长</span><span class="val" id="vs">0.7</span></div><input type="range" min="0.4" max="1.2" step="0.05" value="0.7" oninput="sc('stride',this.value)"></div>
-        <div class="row"><div class="row-head"><span>灵敏度 (越小越灵敏)</span><span class="val" id="vse">1.3</span></div><input type="range" min="0.5" max="4.0" step="0.1" value="1.3" oninput="sc('sens',this.value)"></div>
-        <div style="text-align:center;border-top:1px solid #333;padding-top:10px">
-            <button class="btn-sm" onclick="force()">模拟一步</button>
+    <div id="set">
+        <div style="display:flex;justify-content:space-between;margin-bottom:20px"><h3>参数设置</h3><span onclick="tSet()" style="font-size:20px">×</span></div>
+        <div class="ln"><div class="hd"><span>视频基准速度</span><span class="vl" id="vb">5</span></div><input type="range" min="2" max="15" value="5" oninput="uC('base',this.value)"></div>
+        <div class="ln"><div class="hd"><span>步长</span><span class="vl" id="vs">0.7</span></div><input type="range" min="0.4" max="1.2" step="0.05" value="0.7" oninput="uC('stride',this.value)"></div>
+        <div class="ln"><div class="hd"><span>灵敏度 (1=极灵敏)</span><span class="vl" id="vse">1.3</span></div><input type="range" min="0.5" max="3.0" step="0.1" value="1.3" oninput="uC('sens',this.value)"></div>
+        <div style="border-top:1px solid #333; padding-top:10px; text-align:center;">
+             <button class="btn-s" onclick="sim()">模拟一步</button>
         </div>
     </div>
 
     <script>
-        const C = { base: 5, stride: 0.7, sens: 1.3, vr: 25 };
-        const S = { run: false, steps: 0, lastT: 0, curr: 0, target: 0, land: false, alpha0: null };
+        const C = { base:5, stride:0.7, sens:1.3, vr:25 };
+        const S = { 
+            run:false, steps:0, 
+            lastT:0,      // 上一步时间
+            curr:0, target:0, 
+            land:false, alpha0:null 
+        };
         const vid = document.getElementById('vid');
-        const dot = document.getElementById('dot');
         let ac;
 
-        function fileReady(el) {
-            const f = el.files[0];
-            if(!f) return;
-            vid.src = URL.createObjectURL(f);
-            document.getElementById('fname').innerText = f.name;
-            document.getElementById('go').disabled = false;
-            document.getElementById('go').style.opacity = 1;
+        function onF(el) {
+            const f=el.files[0]; if(!f)return;
+            vid.src=URL.createObjectURL(f);
+            document.getElementById('fn').innerText=f.name;
+            document.getElementById('go').disabled=false;
+            document.getElementById('go').style.opacity=1;
             vid.onloadedmetadata = () => {
                 S.land = vid.videoWidth > vid.videoHeight;
-                if(S.land) { vid.style.width='auto'; vid.style.height='100vh'; }
+                if(S.land) { vid.style.width='auto'; vid.style.height='100vh'; } 
                 else { vid.style.width='100%'; vid.style.height='100%'; }
             };
         }
 
-        function run() {
+        function start() {
             if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
-            document.getElementById('start').style.display = 'none';
-            document.getElementById('hud').style.display = 'flex';
+            document.getElementById('boot').style.display='none';
+            document.getElementById('ui').style.display='flex';
             ac = new (window.AudioContext||window.webkitAudioContext)();
-            
-            if(window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission==='function'){
+            if(window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission==='function') {
                 DeviceMotionEvent.requestPermission().then(r=>{if(r==='granted')init();});
             } else init();
-
             vid.play().then(()=>vid.pause());
-            S.run = true;
+            S.run=true;
             requestAnimationFrame(loop);
         }
 
@@ -134,49 +130,49 @@
             window.addEventListener('deviceorientation', ori);
         }
 
-        // --- 核心逻辑 V9 ---
+        // === 核心逻辑 V10 ===
         function mot(e) {
             const a = e.accelerationIncludingGravity || e.acceleration;
             if(!a) return;
             const v = Math.sqrt(a.x**2 + a.y**2 + a.z**2);
-            // 简单的阈值判定
-            if(Math.abs(v - 9.8) > C.sens) step();
+            // 检测震动
+            if(Math.abs(v - 9.8) > C.sens) trig();
         }
 
-        function step() {
+        function trig() {
             const now = Date.now();
             const diff = now - S.lastT;
 
-            // 防抖
+            // 防抖 (最高240步/分)
             if(diff < 250) return;
 
-            // 视觉心跳反馈 (如果不闪，说明传感器挂了)
-            dot.classList.add('lit');
-            setTimeout(()=>dot.classList.remove('lit'), 100);
-            
-            fb(); // 震动声音
+            // 反馈
+            fb();
             S.steps++;
 
-            // --- 速度计算 (无缓冲，无平均) ---
+            // === 暴力修正算法 ===
             
-            // 1. 判定冷启动 (停车超过1.5秒)
-            if (diff > 1500) {
-                // 强制重置起步速度 (4km/h)
-                S.target = 4.0 / C.base;
-                // 关键：强制把当前速度也拉上来，防止Lerp拖泥带水
-                S.curr = S.target;
+            // 1. 超时判定 (1.2秒没动，就算停车)
+            if (diff > 1200) {
+                // 这是“唤醒”的第一步。
+                // 此时我们不知道节奏，无法计算速度。
+                // 仅更新时间戳，保持速度为 0 (等待第二步)
+                S.lastT = now;
+                S.target = 0; 
+                return; 
+            }
+
+            // 2. 连续行走 (Diff < 1200)
+            const spm = 60000 / diff; // 步频
+            const kmh = (spm * C.stride * 60) / 1000;
+
+            // 3. 低速物理屏蔽 (关键修复)
+            // 如果算出来的速度小于 2.0 km/h，直接扔掉，视为 0。
+            // 这样就再也不会有 0.3 km/h 这种数据存在了。
+            if (kmh < 2.0) {
+                S.target = 0;
             } else {
-                // 2. 正常行走：瞬时计算
-                const spm = 60000 / diff; 
-                const kmh = (spm * C.stride * 60) / 1000;
-                
-                // 3. 强制死亡阈值：如果算出来小于 1.0 km/h，直接归零
-                // 这样就杀死了 0.3 km/h 的幽灵
-                if (kmh < 1.0) {
-                    S.target = 0;
-                } else {
-                    S.target = kmh / C.base;
-                }
+                S.target = kmh / C.base;
             }
             
             S.lastT = now;
@@ -185,23 +181,23 @@
         function loop() {
             if(!S.run) return;
 
-            // 自动停车 (超过1.5秒没信号 -> 归零)
-            if(Date.now() - S.lastT > 1500) {
+            // 自动停车 (1.2秒超时)
+            if(Date.now() - S.lastT > 1200) {
                 S.target = 0;
             }
 
-            // 平滑过渡
+            // 快速响应 (0.2的系数)
             const d = S.target - S.curr;
-            if(Math.abs(d) > 0.01) S.curr += d * 0.15;
+            if(Math.abs(d) > 0.01) S.curr += d * 0.2;
             else S.curr = S.target;
 
-            // 播放控制
-            if(S.curr > 0.05) {
+            // 播放器死区控制 (防止卡在0.0x)
+            if(S.curr < 0.1) {
+                if(!vid.paused) vid.pause();
+                S.curr = 0; // 强制归零
+            } else {
                 vid.playbackRate = S.curr;
                 if(vid.paused) vid.play().catch(()=>{});
-            } else {
-                if(!vid.paused) vid.pause();
-                S.curr = 0; // 彻底锁死为0
             }
 
             draw();
@@ -209,13 +205,13 @@
         }
 
         function draw() {
-            const kmh = S.curr * C.base;
-            document.getElementById('spd').innerText = kmh.toFixed(1);
-            document.getElementById('rate').innerText = S.curr.toFixed(2) + " x";
-            document.getElementById('step').innerText = S.steps;
-            document.getElementById('dist').innerText = ((S.steps*C.stride)/1000).toFixed(2)+" km";
+            const k = S.curr * C.base;
+            document.getElementById('dsp-s').innerText = k.toFixed(1);
+            document.getElementById('dsp-r').innerText = S.curr.toFixed(2)+" x";
+            document.getElementById('dsp-st').innerText = S.steps;
+            document.getElementById('dsp-d').innerText = ((S.steps*C.stride)/1000).toFixed(2)+" km";
             if(vid.duration) {
-                document.getElementById('bar').style.width = (vid.currentTime/vid.duration*100)+"%";
+                document.getElementById('pb').style.width = (vid.currentTime/vid.duration*100)+"%";
                 document.getElementById('tc').innerText = fmt(vid.currentTime);
                 document.getElementById('tt').innerText = fmt(vid.duration);
             }
@@ -227,7 +223,8 @@
             let d = e.alpha - S.alpha0;
             if(d > 180) d -= 360; if(d < -180) d += 360;
             d = Math.max(-C.vr, Math.min(C.vr, d));
-            vid.style.transform = `translateX(${d * -1.0}%)`; // 反向移动
+            // 反向位移逻辑
+            vid.style.transform = `translateX(${d * -1}%)`;
         }
 
         function fb() {
@@ -235,7 +232,7 @@
             if(ac && ac.state==='running') {
                 const o=ac.createOscillator(), g=ac.createGain();
                 o.connect(g); g.connect(ac.destination);
-                o.frequency.setValueAtTime(100, ac.currentTime);
+                o.frequency.setValueAtTime(120, ac.currentTime);
                 o.frequency.exponentialRampToValueAtTime(0.01, ac.currentTime+0.1);
                 g.gain.setValueAtTime(0.2, ac.currentTime);
                 g.gain.exponentialRampToValueAtTime(0.01, ac.currentTime+0.1);
@@ -243,15 +240,15 @@
             }
         }
 
-        function toggle() { document.getElementById('drawer').classList.toggle('open'); }
-        function sc(k,v) { 
-            v=parseFloat(v); C[k]=v; 
+        function tSet() { document.getElementById('set').classList.toggle('show'); }
+        function uC(k,v) { 
+            v=parseFloat(v); C[k]=v;
             if(k==='base')document.getElementById('vb').innerText=v;
             if(k==='stride')document.getElementById('vs').innerText=v;
             if(k==='sens')document.getElementById('vse').innerText=v;
         }
         function fmt(s) { return Math.floor(s/60)+":"+(Math.floor(s%60)<10?'0':'')+Math.floor(s%60); }
-        function force() { step(); }
+        function sim() { trig(); }
     </script>
 </body>
 </html>
