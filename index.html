@@ -3,129 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>健身漫步 V4 - 真实模拟版</title>
+    <title>健身漫步 V4 - 物理引擎版</title>
     <style>
-        /* --- 1. 基础布局 --- */
+        /* --- 基础样式 --- */
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
             background-color: #000; overflow: hidden;
-            font-family: "DIN Alternate", "Roboto Condensed", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
             color: white; user-select: none; -webkit-tap-highlight-color: transparent;
         }
 
         /* 视频容器 */
         #video-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 1; overflow: hidden;
-            display: flex; align-items: center; justify-content: center;
+            z-index: 1; overflow: hidden; display: flex; align-items: center; justify-content: center;
         }
         video {
-            /* 初始状态，会被JS动态调整 */
+            /* 默认状态，JS会根据VR模式调整 */
             width: 100%; height: 100%; object-fit: cover;
-            transition: transform 0.1s ease-out; /* VR平滑 */
+            transform-origin: center center;
+            will-change: transform;
         }
 
-        /* --- 2. 沉浸式 HUD --- */
+        /* UI 覆盖层 */
         #hud-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10; pointer-events: none; /* 点击穿透 */
+            z-index: 10; pointer-events: none;
             display: flex; flex-direction: column; justify-content: space-between;
-            background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 20%, rgba(0,0,0,0) 80%, rgba(0,0,0,0.8) 100%);
         }
 
         /* 顶部仪表盘 */
-        .top-dash {
-            padding: 20px; display: flex; justify-content: space-between; align-items: flex-start;
+        .top-panel {
+            padding: 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+            display: flex; justify-content: space-between; align-items: flex-start;
         }
-        .metric-box { text-align: center; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
-        .metric-label { font-size: 12px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
-        .metric-val { font-size: 38px; font-weight: bold; color: #fff; line-height: 1; }
-        .metric-unit { font-size: 14px; color: #00e676; font-weight: bold; }
-        
-        /* 步数与反馈灯 */
-        .step-indicator {
-            width: 15px; height: 15px; border-radius: 50%; background: #333; 
-            border: 2px solid #555; display: inline-block; margin-bottom: 5px;
-            transition: background 0.05s, transform 0.1s;
-        }
-        .step-active { background: #00e676; transform: scale(1.2); box-shadow: 0 0 10px #00e676; border-color: #fff; }
+        .metric { text-align: left; }
+        .metric-right { text-align: right; }
+        .big-num { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; text-shadow: 0 2px 4px black; }
+        .label { font-size: 12px; color: #ccc; text-transform: uppercase; margin-top: -2px; }
+        .sub-val { font-size: 14px; color: #4CAF50; font-weight: bold; margin-top: 2px; }
 
-        /* 底部控制区 */
-        .bottom-dash {
-            padding: 20px; pointer-events: auto;
+        /* 底部控制栏 */
+        .bottom-panel {
+            padding: 20px; padding-bottom: 30px;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            pointer-events: auto;
         }
 
-        /* 进度条组合 */
-        .progress-info { display: flex; justify-content: space-between; font-size: 12px; color: #ccc; margin-bottom: 5px; }
-        .progress-track {
-            width: 100%; height: 8px; background: rgba(255,255,255,0.2);
-            border-radius: 4px; overflow: hidden; margin-bottom: 15px;
+        /* 进度条 */
+        .progress-bg {
+            width: 100%; height: 6px; background: rgba(255,255,255,0.2);
+            border-radius: 3px; margin-bottom: 15px; position: relative; overflow: hidden;
         }
-        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #00e676, #00c853); transition: width 0.5s linear; }
-
-        .btn-toggle {
-            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.2);
-            color: white; padding: 10px 20px; border-radius: 20px;
-            backdrop-filter: blur(5px); font-size: 14px; width: 100%;
+        .progress-fg {
+            height: 100%; width: 0%; background: #4CAF50;
+            box-shadow: 0 0 10px #4CAF50; transition: width 0.2s linear;
+        }
+        .progress-text {
+            position: absolute; right: 0; top: -20px; font-size: 12px; color: #aaa;
         }
 
-        /* --- 3. 设置面板 (Modal) --- */
-        #settings-modal {
+        /* 设置面板 (抽屉式) */
+        #settings-drawer {
             position: absolute; bottom: 0; left: 0; width: 100%;
-            background: #1e1e1e; border-top: 1px solid #333;
-            border-top-left-radius: 20px; border-top-right-radius: 20px;
-            padding: 25px; box-sizing: border-box;
-            transform: translateY(110%); transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-            z-index: 100; pointer-events: auto; color: #eee;
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+            background: #1e1e1e; border-top-left-radius: 20px; border-top-right-radius: 20px;
+            padding: 20px; box-sizing: border-box;
+            transform: translateY(110%); transition: transform 0.3s cubic-bezier(0.1, 0.7, 0.1, 1);
+            z-index: 20; pointer-events: auto; max-height: 80vh; overflow-y: auto;
+            border-top: 1px solid #333;
         }
-        #settings-modal.active { transform: translateY(0); }
+        #settings-drawer.open { transform: translateY(0); }
 
-        .setting-group { margin-bottom: 20px; }
-        .setting-header { display: flex; justify-content: space-between; font-size: 14px; color: #888; margin-bottom: 8px; }
-        .setting-val { color: #00e676; font-weight: bold; }
-        
-        input[type=range] { width: 100%; -webkit-appearance: none; background: #333; height: 6px; border-radius: 3px; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: #fff; border-radius: 50%; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
-
-        .switch-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; font-size: 16px; }
+        /* 控件样式 */
+        .row { margin-bottom: 18px; }
+        .row-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; color: #ddd; }
+        .row-val { color: #4CAF50; font-weight: bold; }
+        input[type="range"] {
+            width: 100%; height: 6px; background: #444; border-radius: 3px;
+            -webkit-appearance: none; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 22px; height: 22px; background: #fff; border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
         .toggle-switch {
-            width: 50px; height: 26px; background: #444; border-radius: 13px; position: relative; transition: 0.3s; cursor: pointer;
+            width: 50px; height: 28px; background: #444; border-radius: 14px; position: relative; transition: 0.3s; cursor: pointer;
         }
         .toggle-switch::after {
-            content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+            content: ''; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px;
             background: white; border-radius: 50%; transition: 0.3s;
         }
-        .toggle-active { background: #00e676; }
-        .toggle-active::after { left: 27px; }
+        .toggle-switch.active { background: #4CAF50; }
+        .toggle-switch.active::after { left: 24px; }
 
-        /* --- 4. 启动页 --- */
-        #start-overlay {
-            position: absolute; top:0; left:0; width:100%; height:100%;
-            background: #000; z-index: 200;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        /* 按钮 */
+        button { border: none; outline: none; }
+        .btn-main {
+            width: 100%; background: #333; color: white; padding: 12px; border-radius: 10px;
+            font-size: 14px; font-weight: bold; margin-top: 10px;
         }
-        .hero-btn {
-            background: #00e676; color: #000; border: none; padding: 15px 40px;
-            border-radius: 50px; font-size: 18px; font-weight: 900; margin-top: 20px;
-            box-shadow: 0 5px 15px rgba(0, 230, 118, 0.4);
+        .btn-start {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white; padding: 15px 40px; border-radius: 30px; font-size: 18px;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
         }
-        .hero-btn:disabled { background: #333; color: #666; box-shadow: none; }
-
+        
+        /* 启动页 */
+        #start-page {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 50; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+        }
     </style>
 </head>
 <body>
 
     <!-- 启动页 -->
-    <div id="start-overlay">
-        <h1 style="font-size: 28px; margin-bottom: 10px;">🏃‍♂️ 漫步 V4</h1>
-        <p style="color:#666; font-size:13px; margin-bottom: 30px;">真实步频算法 · 边界锁定VR · 触感反馈</p>
+    <div id="start-page">
+        <h1 style="color:#4CAF50; margin-bottom:5px;">🏃 漫步 V4</h1>
+        <p style="color:#666; font-size:12px; margin-bottom:40px;">物理计算 · 沉浸反馈 · VR全景</p>
         
-        <input type="file" id="fileIn" accept="video/*" style="display:none" onchange="loadFile(this)">
-        <button class="hero-btn" style="background:#333; color:#fff" onclick="document.getElementById('fileIn').click()">1. 选择路线视频</button>
-        <div id="file-name" style="color:#00e676; font-size:12px; margin: 10px 0; height:15px;"></div>
+        <button class="btn-main" onclick="document.getElementById('videoInput').click()" style="width:auto; padding:10px 30px; margin-bottom:20px; background:#2196F3;">
+            📂 1. 选择路线视频
+        </button>
+        <input type="file" id="videoInput" accept="video/*" style="display:none" onchange="fileLoaded(this)">
         
-        <button id="start-btn" class="hero-btn" onclick="startApp()" disabled>2. 开始探索</button>
+        <div id="file-name" style="color:#4CAF50; font-size:12px; height:20px; margin-bottom:20px;"></div>
+
+        <button id="btn-go" class="btn-start" onclick="initApp()" disabled style="opacity:0.5">
+            🚀 2. 全屏出发
+        </button>
     </div>
 
     <!-- 视频层 -->
@@ -133,412 +142,375 @@
         <video id="mainVideo" playsinline loop muted webkit-playsinline></video>
     </div>
 
-    <!-- HUD 层 -->
+    <!-- HUD 界面 -->
     <div id="hud-layer" style="display:none;">
-        <div class="top-dash">
-            <div class="metric-box" style="text-align: left;">
-                <div class="metric-label">当前速度</div>
-                <div class="metric-val" id="disp-speed">0.0</div>
-                <div class="metric-unit">KM/H</div>
+        <div class="top-panel">
+            <div class="metric">
+                <div class="big-num" id="disp-speed">0.0</div>
+                <div class="label">播放倍速 (x)</div>
+                <div class="sub-val" id="disp-kmh">0.0 km/h</div>
             </div>
-            
-            <div class="metric-box">
-                <div class="step-indicator" id="step-led"></div>
-                <div class="metric-label">步频 SPM</div>
-                <div class="metric-val" id="disp-spm">0</div>
-            </div>
-
-            <div class="metric-box" style="text-align: right;">
-                <div class="metric-label">剩余距离</div>
-                <div class="metric-val" id="disp-dist">0.0</div>
-                <div class="metric-unit">KM</div>
+            <div class="metric-right">
+                <div class="big-num" id="disp-steps">0</div>
+                <div class="label">总步数</div>
+                <div class="sub-val" id="disp-dist">0.00 km</div>
             </div>
         </div>
 
-        <div class="bottom-dash">
-            <div class="progress-info">
-                <span id="time-curr">00:00</span>
-                <span id="time-total">00:00</span>
+        <div class="bottom-panel">
+            <div class="progress-text"><span id="time-current">00:00</span> / <span id="time-total">00:00</span></div>
+            <div class="progress-bg">
+                <div class="progress-fg" id="progress-bar"></div>
             </div>
-            <div class="progress-track">
-                <div class="progress-fill" id="prog-fill"></div>
-            </div>
-            <button class="btn-toggle" onclick="toggleSettings()">⚙️ 运动设置 & 反馈</button>
+            <button class="btn-main" onclick="toggleSettings()">⚙️ 运动设置 & 反馈</button>
         </div>
     </div>
 
-    <!-- 设置面板 -->
-    <div id="settings-modal">
+    <!-- 设置抽屉 -->
+    <div id="settings-drawer">
         <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
-            <h3 style="margin:0">设置</h3>
-            <span onclick="toggleSettings()" style="color:#888; font-size:20px;">✕</span>
+            <h3>⚙️ 参数设置</h3>
+            <button onclick="toggleSettings()" style="background:transparent; color:#888; font-size:20px;">✕</button>
         </div>
 
-        <!-- 1. 速度逻辑修正 -->
-        <div class="setting-group">
-            <div class="setting-header">
-                原视频录制速度 <span class="setting-val" id="val-base">5 km/h</span>
+        <!-- 1. 基础物理参数 -->
+        <div class="row">
+            <div class="row-header">
+                <span>原视频行进速度 (km/h)</span>
+                <span class="row-val" id="val-base">5</span>
             </div>
-            <input type="range" min="2" max="30" value="5" oninput="updateParam('baseSpeed', this.value); calcDistance();">
-            <div style="font-size:10px; color:#555; margin-top:5px;">重要：此数值决定总路程的计算。</div>
+            <input type="range" min="2" max="30" value="5" oninput="updateParam('baseSpeed', this.value, 'val-base')">
         </div>
 
-        <div class="setting-group">
-            <div class="setting-header">
-                强度倍率 (步频 x 步长 x 倍率) <span class="setting-val" id="val-mult">1.0x</span>
+        <div class="row">
+            <div class="row-header">
+                <span>我的步长 (米)</span>
+                <span class="row-val" id="val-stride">0.70</span>
             </div>
-            <input type="range" min="0.5" max="2.0" step="0.1" value="1.0" oninput="updateParam('speedMult', this.value)">
+            <input type="range" min="0.3" max="1.2" step="0.05" value="0.7" oninput="updateParam('strideLength', this.value, 'val-stride')">
+            <div style="font-size:10px; color:#666; margin-top:5px;">计算公式：步频 × 步长 = 当前速度</div>
         </div>
 
-        <div class="setting-group">
-            <div class="setting-header">
-                传感器灵敏度 (数值越小越灵敏) <span class="setting-val" id="val-sens">2.0</span>
+        <!-- 2. 传感器与VR -->
+        <div class="row">
+            <div class="row-header">
+                <span>传感器灵敏度 (1=极灵敏)</span>
+                <span class="row-val" id="val-sens">1.5</span>
             </div>
-            <input type="range" min="0.5" max="6.0" step="0.1" value="2.0" oninput="updateParam('sensitivity', this.value)">
+            <input type="range" min="1.0" max="6.0" step="0.1" value="1.5" oninput="updateParam('sensitivity', this.value, 'val-sens')">
         </div>
 
-        <!-- 2. 反馈开关 -->
-        <div class="switch-row" onclick="toggleSwitch('sound')">
-            <span>🔊 踏步音效 (咚咚声)</span>
-            <div class="toggle-switch" id="sw-sound"></div>
+        <!-- 3. 反馈开关 -->
+        <div class="toggle-row" onclick="toggleSwitch('sound')">
+            <span>🔊 踏步音效</span>
+            <div class="toggle-switch active" id="sw-sound"></div>
         </div>
-        <div class="switch-row" onclick="toggleSwitch('vibrate')">
+        <div class="toggle-row" onclick="toggleSwitch('vib')">
             <span>📳 震动反馈</span>
-            <div class="toggle-switch" id="sw-vibrate"></div>
+            <div class="toggle-switch active" id="sw-vib"></div>
         </div>
 
-        <div style="text-align:center; font-size:10px; color:#444; margin-top:20px;">
-            Tip: 原地踏步请将手机放入裤兜或握在手中
+        <div style="margin-top:20px; border-top:1px solid #333; padding-top:10px;">
+            <button class="btn-main" style="background:#444;" onclick="simulateStep()">🧪 模拟走一步 (调试用)</button>
         </div>
     </div>
 
     <script>
-        // --- 核心状态 ---
+        // --- 核心配置与状态 ---
+        const config = {
+            baseSpeed: 5,       // 视频录制速度 km/h
+            strideLength: 0.7,  // 用户步长 (米)
+            sensitivity: 1.5,   // 传感器阈值
+            soundEnabled: true,
+            vibEnabled: true,
+            vrMaxAngle: 30      // VR左右最大摆动角度
+        };
+
         const state = {
-            baseSpeed: 5,   // 视频原速 km/h
-            speedMult: 1.0, // 强度倍率
-            sensitivity: 2.0, // 阈值
-            stepLength: 0.7, // 假设每步 0.7米
-            soundEnabled: false,
-            vibrateEnabled: false,
-            
-            // 运行时
             isPlaying: false,
-            totalDistanceKm: 0,
-            currentSpeed: 0,
-            cadence: 0,     // 步频
-            lastStepTimes: [], // 记录最近几步的时间戳
-            vrMaxOffset: 0, // VR最大偏移量
+            steps: 0,
+            lastStepTime: 0,
+            currentCadence: 0,  // 当前步频 (步/秒)
+            targetRate: 0,      // 目标播放倍率
+            currentRate: 0,     // 当前实际倍率 (用于平滑过渡)
+            totalDistance: 0,   // 总里程 (km)
+            vrInitialAlpha: null,
+            isLandscape: false
         };
 
-        const dom = {
-            video: document.getElementById('mainVideo'),
-            led: document.getElementById('step-led'),
-            speed: document.getElementById('disp-speed'),
-            spm: document.getElementById('disp-spm'),
-            dist: document.getElementById('disp-dist'),
-            bar: document.getElementById('prog-fill'),
-            settings: document.getElementById('settings-modal')
-        };
-
-        // Web Audio Context
+        // --- DOM 元素 ---
+        const video = document.getElementById('mainVideo');
+        const hud = document.getElementById('hud-layer');
+        const drawer = document.getElementById('settings-drawer');
+        const startPage = document.getElementById('start-page');
+        
+        // --- 音频上下文 (Web Audio API) ---
         let audioCtx;
 
         // --- 1. 初始化 ---
-        function loadFile(input) {
+        function fileLoaded(input) {
             const file = input.files[0];
-            if(!file) return;
-            dom.video.src = URL.createObjectURL(file);
-            document.getElementById('file-name').innerText = file.name;
-            document.getElementById('start-btn').disabled = false;
-            document.getElementById('start-btn').style.background = "#00e676";
+            if (file) {
+                video.src = URL.createObjectURL(file);
+                document.getElementById('file-name').innerText = file.name;
+                const btn = document.getElementById('btn-go');
+                btn.disabled = false;
+                btn.style.opacity = 1;
 
-            // 视频元数据加载后，计算VR边界和总路程
-            dom.video.onloadedmetadata = () => {
-                calcDistance();
-                setupVR();
-            };
+                // 视频元数据加载后判断VR模式
+                video.onloadedmetadata = () => {
+                    state.isLandscape = video.videoWidth > video.videoHeight;
+                    if(state.isLandscape) {
+                        // 横屏视频在竖屏手机：高度铺满，左右溢出，开启VR
+                        video.style.height = "100vh";
+                        video.style.width = "auto";
+                        // 预先放大一点，避免移动时露底
+                        video.style.transform = "scale(1.2)";
+                    } else {
+                        // 竖屏视频：全屏覆盖
+                        video.style.width = "100%";
+                        video.style.height = "100%";
+                    }
+                };
+            }
         }
 
-        function startApp() {
-            // 初始化音频环境 (必须在用户交互中)
+        function initApp() {
+            // 初始化音频 (必须在用户点击后)
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
             // 全屏
             if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
             
-            document.getElementById('start-overlay').style.display = 'none';
-            document.getElementById('hud-layer').style.display = 'flex';
-            
-            // 预备播放
-            dom.video.play().then(() => {
-                dom.video.playbackRate = 0; // 初始静止
-            }).catch(console.error);
+            startPage.style.display = 'none';
+            hud.style.display = 'flex';
 
-            initSensors();
-            requestAnimationFrame(loop);
-        }
-
-        // --- 2. 物理与速度计算 (核心重写) ---
-        function recordStep() {
-            const now = Date.now();
-            
-            // 过滤极短时间的误触 (250ms = 最快240步/分，几乎是人类极限)
-            if (state.lastStepTimes.length > 0) {
-                if (now - state.lastStepTimes[state.lastStepTimes.length-1] < 250) return;
-            }
-
-            // 记录时间戳
-            state.lastStepTimes.push(now);
-            // 只保留最近5步用于计算平均值，保证平滑
-            if (state.lastStepTimes.length > 6) state.lastStepTimes.shift();
-
-            // 反馈
-            triggerFeedback();
-        }
-
-        function calculatePhysics() {
-            const now = Date.now();
-            
-            // 清理超时步数 (如果超过2秒没走，就认为停了)
-            state.lastStepTimes = state.lastStepTimes.filter(t => now - t < 2500);
-
-            if (state.lastStepTimes.length < 2) {
-                state.cadence = 0;
-                state.currentSpeed = 0;
-            } else {
-                // 计算平均间隔
-                let totalInterval = 0;
-                for (let i = 1; i < state.lastStepTimes.length; i++) {
-                    totalInterval += (state.lastStepTimes[i] - state.lastStepTimes[i-1]);
-                }
-                const avgInterval = totalInterval / (state.lastStepTimes.length - 1);
-                
-                // 步频 (步/分)
-                state.cadence = Math.round(60000 / avgInterval);
-
-                // 速度 (km/h) = 步频/60 * 步长(m) * 3.6(m/s->km/h) * 倍率
-                // 简化公式：Cadence * StepLength * 0.06 * Mult
-                const rawSpeed = state.cadence * state.stepLength * 0.06 * state.speedMult;
-                
-                // 平滑处理速度
-                state.currentSpeed += (rawSpeed - state.currentSpeed) * 0.1; 
-            }
-            
-            // 只有极小的速度就归零
-            if (state.currentSpeed < 0.1) state.currentSpeed = 0;
-        }
-
-        // --- 3. 传感器逻辑 ---
-        function initSensors() {
+            // 请求传感器权限
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                 DeviceMotionEvent.requestPermission().then(res => {
-                    if (res === 'granted') bindSensors();
+                    if(res === 'granted') startSensors();
+                    else alert("拒绝权限将无法检测步数");
                 });
             } else {
-                bindSensors();
+                startSensors();
+            }
+
+            // 预播放
+            video.play().then(() => {
+                video.pause(); // 先暂停，等待走路触发
+            }).catch(e => console.log(e));
+
+            // 启动主循环
+            state.isPlaying = true;
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- 2. 传感器逻辑 ---
+        function startSensors() {
+            window.addEventListener('devicemotion', handleMotion);
+            window.addEventListener('deviceorientation', handleOrientation);
+        }
+
+        function handleMotion(e) {
+            const acc = e.accelerationIncludingGravity || e.acceleration;
+            if (!acc) return;
+
+            // 计算去重力后的合力
+            const total = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
+            const delta = Math.abs(total - 9.8); // 减去重力
+
+            if (delta > config.sensitivity) {
+                registerStep();
             }
         }
 
-        function bindSensors() {
-            window.addEventListener('devicemotion', e => {
-                const acc = e.accelerationIncludingGravity;
-                if(!acc) return;
-                // 去重力模长
-                const total = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2);
-                const delta = Math.abs(total - 9.8);
+        // 核心：记录一步
+        function registerStep() {
+            const now = Date.now();
+            // 防抖：最小间隔 250ms (相当于最高步频 240/min)
+            if (now - state.lastStepTime > 250) {
+                // 计算瞬时步频
+                let timeDiff = now - state.lastStepTime;
                 
-                if (delta > state.sensitivity) {
-                    recordStep();
-                }
-            });
+                // 如果间隔太久(比如停下来了)，重置计算
+                if (timeDiff > 2000) timeDiff = 1000; // 默认给一个初始值
 
-            // VR 逻辑
-            window.addEventListener('deviceorientation', handleVR);
+                // 更新状态
+                state.lastStepTime = now;
+                state.steps++;
+                
+                // 反馈
+                provideFeedback();
+
+                // 核心计算：根据间隔算出 步/秒
+                // timeDiff 是毫秒。 1000 / 500ms = 2 steps/sec
+                const stepsPerSec = 1000 / timeDiff;
+                
+                calculateSpeed(stepsPerSec);
+            }
         }
 
-        // --- 4. VR 逻辑修复 (反向 + 边界) ---
-        let baseAlpha = null;
-        
-        function setupVR() {
-            const vW = dom.video.videoWidth;
-            const vH = dom.video.videoHeight;
-            const sW = window.innerWidth;
-            const sH = window.innerHeight;
+        function calculateSpeed(cadence) {
+            // 速度(m/s) = 步频(步/s) * 步长(m)
+            const speedMs = cadence * config.strideLength;
             
-            // 判断是否是横屏视频
-            const isVideoLandscape = vW > vH;
-            
-            if (isVideoLandscape) {
-                // 强制高度填满，计算宽度溢出多少
-                // 视频渲染高度 = 屏幕高度
-                // 视频渲染宽度 = 屏幕高度 * (vW / vH)
-                const renderW = sH * (vW / vH);
-                const overflowPx = renderW - sW;
+            // 速度(km/h) = 速度(m/s) * 3.6
+            const speedKmh = speedMs * 3.6;
+
+            // 播放倍率 = 当前速度 / 原视频速度
+            const rate = speedKmh / config.baseSpeed;
+
+            // 设置目标倍率 (限制在 0.1 到 5.0 之间)
+            state.targetRate = Math.min(Math.max(rate, 0), 5.0);
+        }
+
+        // 反馈系统
+        function provideFeedback() {
+            // 1. 震动
+            if (config.vibEnabled && navigator.vibrate) {
+                navigator.vibrate(15); // 短震动
+            }
+            // 2. 声音
+            if (config.soundEnabled && audioCtx && audioCtx.state === 'running') {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
                 
-                if (overflowPx > 0) {
-                    // 允许左右各移动一半的溢出量
-                    // 转换为相对于宽度的百分比
-                    // maxTranslate% = (overflowPx / 2) / renderW * 100
-                    state.vrMaxOffset = (overflowPx / 2) / renderW * 100;
-                    
-                    dom.video.style.height = "100vh";
-                    dom.video.style.width = "auto";
-                    dom.video.style.maxWidth = "none"; 
-                } else {
-                    state.vrMaxOffset = 0; // 屏幕比视频还宽，不移动
-                    dom.video.style.width = "100%";
-                    dom.video.style.height = "100%";
+                // 模拟低沉的脚步声 (频率快速下降)
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.15);
+            }
+        }
+
+        // VR 视角控制
+        function handleOrientation(e) {
+            if (!state.isLandscape || !e.alpha) return;
+
+            if (state.vrInitialAlpha === null) {
+                state.vrInitialAlpha = e.alpha;
+            }
+
+            // 计算角度差 (-180 ~ 180)
+            let diff = e.alpha - state.vrInitialAlpha;
+            if (diff > 180) diff -= 360;
+            if (diff < -180) diff += 360;
+
+            // 修正方向：人向左转(diff负)，画面应该向右移(translateX正)，才能看到左边的景
+            // 所以这里用 -diff
+            // 限制最大角度 (Clamp)
+            let clampedDiff = Math.max(-config.vrMaxAngle, Math.min(config.vrMaxAngle, -diff));
+
+            // 映射到百分比 (假设30度对应20%位移)
+            let translatePct = (clampedDiff / config.vrMaxAngle) * 20;
+
+            // 应用变换：位移 + 缩放(防止黑边)
+            video.style.transform = `translateX(${translatePct}%) scale(1.2)`;
+        }
+
+        // --- 3. 主循环 ---
+        function gameLoop() {
+            if (!state.isPlaying) return;
+
+            const now = Date.now();
+
+            // 自动停车逻辑：如果超过1.5秒没有新步数，目标速度归零
+            if (now - state.lastStepTime > 1500) {
+                state.targetRate = 0;
+            }
+
+            // 平滑过渡 (Lerp)
+            // 0.05 是平滑系数，越小越平滑但反应越慢
+            const diff = state.targetRate - state.currentRate;
+            if (Math.abs(diff) > 0.01) {
+                state.currentRate += diff * 0.05;
+            } else {
+                state.currentRate = state.targetRate;
+            }
+
+            // 播放控制
+            if (state.currentRate > 0.05) {
+                video.playbackRate = state.currentRate;
+                if (video.paused) {
+                    video.play().catch(e => {}); // 忽略播放中的打断错误
                 }
             } else {
-                 // 竖屏视频，不移动
-                 state.vrMaxOffset = 0;
-                 dom.video.style.width = "100%";
-                 dom.video.style.height = "100%";
+                // 速度极低时暂停
+                state.currentRate = 0;
+                if (!video.paused) video.pause();
             }
+
+            // UI 更新
+            updateUI();
+
+            requestAnimationFrame(gameLoop);
         }
 
-        function handleVR(e) {
-            if (state.vrMaxOffset <= 0 || !e.alpha) return;
+        function updateUI() {
+            // 倍速
+            document.getElementById('disp-speed').innerText = state.currentRate.toFixed(1);
             
-            if (baseAlpha === null) baseAlpha = e.alpha;
+            // 实时速度 (Rate * Base)
+            const realKmh = state.currentRate * config.baseSpeed;
+            document.getElementById('disp-kmh').innerText = realKmh.toFixed(1) + " km/h";
 
-            let delta = e.alpha - baseAlpha;
-            if (delta > 180) delta -= 360;
-            if (delta < -180) delta += 360;
+            // 步数
+            document.getElementById('disp-steps').innerText = state.steps;
 
-            // 修正方向：手机向左转(delta正负取决于OS)，一般需要反向移动画面
-            // 假设向左转 delta 是正数，画面应该向右移(translateX > 0)来看左边的景？
-            // 实际上：向左转头，视线向左，画面应该向右平移（把左边的内容露出来）。
-            
-            // 限制角度范围 (-60度 到 60度)
-            let clampDelta = Math.max(-60, Math.min(60, delta));
-            
-            // 映射到百分比 (-60 ~ 60) -> (-max ~ max)
-            // 比例 = clampDelta / 60
-            const xPercent = (clampDelta / 60) * state.vrMaxOffset;
-            
-            // 应用 (注意正负号调试，Android通常 左转alpha增加)
-            dom.video.style.transform = `translateX(${xPercent}%)`;
-        }
+            // 总里程 (利用原视频时间计算太麻烦，直接用 步数 * 步长 更准)
+            const distKm = (state.steps * config.strideLength) / 1000;
+            document.getElementById('disp-dist').innerText = distKm.toFixed(2) + " km";
 
-
-        // --- 5. 游戏化反馈 ---
-        function triggerFeedback() {
-            // 1. LED 闪烁
-            dom.led.classList.add('step-active');
-            setTimeout(() => dom.led.classList.remove('step-active'), 100);
-
-            // 2. 震动
-            if (state.vibrateEnabled && navigator.vibrate) {
-                navigator.vibrate(40); // 轻震
+            // 进度条与时间
+            if (video.duration) {
+                const pct = (video.currentTime / video.duration) * 100;
+                document.getElementById('progress-bar').style.width = pct + "%";
+                document.getElementById('time-current').innerText = formatTime(video.currentTime);
+                document.getElementById('time-total').innerText = formatTime(video.duration);
             }
-
-            // 3. 声音 (合成低频脚步声)
-            if (state.soundEnabled && audioCtx) {
-                playFootstepSound();
-            }
-        }
-
-        function playFootstepSound() {
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-            
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            const filter = audioCtx.createBiquadFilter();
-
-            // 制造噪音的一般方法比较复杂，这里用简单的低频正弦波模拟“咚”
-            osc.type = 'triangle'; 
-            osc.frequency.setValueAtTime(80, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.1);
-
-            filter.type = 'lowpass';
-            filter.frequency.value = 200;
-
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
-        }
-
-        // --- 6. 主循环 ---
-        function loop() {
-            calculatePhysics();
-            
-            // 更新 UI
-            dom.speed.innerText = state.currentSpeed.toFixed(1);
-            dom.spm.innerText = state.cadence;
-            
-            // 计算剩余距离
-            // 总路程已经在 calcDistance 算好
-            // 剩余 = 总 * (1 - progress)
-            if (dom.video.duration) {
-                const pct = dom.video.currentTime / dom.video.duration;
-                const remain = state.totalDistanceKm * (1 - pct);
-                dom.dist.innerText = remain.toFixed(2);
-                dom.bar.style.width = (pct * 100) + "%";
-                
-                // 时间显示
-                dom.video.currentTime
-                document.getElementById('time-curr').innerText = fmtTime(dom.video.currentTime);
-                document.getElementById('time-total').innerText = fmtTime(dom.video.duration);
-            }
-
-            // 控制视频
-            const rate = state.currentSpeed / state.baseSpeed;
-            if (rate > 0.05) {
-                dom.video.playbackRate = rate;
-                if (dom.video.paused) dom.video.play();
-            } else {
-                if (!dom.video.paused) dom.video.pause();
-            }
-
-            requestAnimationFrame(loop);
         }
 
         // --- 辅助功能 ---
-        function calcDistance() {
-            if (dom.video.duration) {
-                // 时长(小时) * 速度(km/h)
-                state.totalDistanceKm = (dom.video.duration / 3600) * state.baseSpeed;
+        function updateParam(key, val, displayId) {
+            val = parseFloat(val);
+            config[key] = val;
+            if (displayId) {
+                document.getElementById(displayId).innerText = val.toFixed(key === 'baseSpeed' ? 0 : (key==='sensitivity'?1:2));
             }
         }
-        
-        function fmtTime(s) {
+
+        function toggleSwitch(type) {
+            if(type === 'sound') {
+                config.soundEnabled = !config.soundEnabled;
+                document.getElementById('sw-sound').classList.toggle('active');
+            } else if (type === 'vib') {
+                config.vibEnabled = !config.vibEnabled;
+                document.getElementById('sw-vib').classList.toggle('active');
+            }
+        }
+
+        function toggleSettings() {
+            drawer.classList.toggle('open');
+        }
+
+        function simulateStep() {
+            registerStep();
+        }
+
+        function formatTime(s) {
             const m = Math.floor(s / 60);
             const sec = Math.floor(s % 60);
             return `${m}:${sec < 10 ? '0'+sec : sec}`;
         }
 
-        function toggleSettings() {
-            dom.settings.classList.toggle('active');
-        }
-
-        function updateParam(key, val) {
-            state[key] = parseFloat(val);
-            // 更新UI显示
-            if(key === 'baseSpeed') document.getElementById('val-base').innerText = val + " km/h";
-            if(key === 'speedMult') document.getElementById('val-mult').innerText = val + "x";
-            if(key === 'sensitivity') document.getElementById('val-sens').innerText = val;
-        }
-
-        function toggleSwitch(key) {
-            const el = document.getElementById('sw-' + key);
-            state[key + 'Enabled'] = !state[key + 'Enabled'];
-            if(state[key + 'Enabled']) el.classList.add('toggle-active');
-            else el.classList.remove('toggle-active');
-            
-            // 试听/试震
-            if(state[key + 'Enabled']) triggerFeedback();
-        }
-        
-        // 窗口大小改变重新计算VR边界
-        window.addEventListener('resize', setupVR);
+        // 调试模拟
+        window.simulateStep = simulateStep;
 
     </script>
 </body>
