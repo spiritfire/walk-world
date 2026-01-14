@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>漫步 V11 - 完美体验版</title>
+    <title>漫步 V12 - 最终完成版</title>
     <style>
         /* --- 全局样式 --- */
         body, html { margin:0; padding:0; width:100%; height:100%; background:#000; overflow:hidden; font-family:-apple-system, BlinkMacSystemFont, Roboto, sans-serif; user-select:none; -webkit-tap-highlight-color:transparent; color:white; }
         
-        /* 视频容器：无缩放，仅位移 */
+        /* 视频容器 */
         #v-wrap { position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; display:flex; align-items:center; justify-content:center; }
         video { width:100%; height:100%; object-fit:cover; transition:transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
 
-        /* UI层：全透明 + 强阴影 */
+        /* UI层 */
         #ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; text-shadow:0 1px 5px rgba(0,0,0,1); }
         
         /* 顶部数据 */
@@ -24,7 +24,7 @@
         .txt-lbl { font-size:12px; font-weight:700; color:#ccc; margin-top:5px; text-transform:uppercase; letter-spacing:1px; }
         .txt-sub { font-size:16px; font-weight:700; color:#00e676; margin-top:5px; }
 
-        /* 呼吸点 (Sensor Dot) */
+        /* 呼吸点 */
         .dot { display:inline-block; width:10px; height:10px; background:#444; border-radius:50%; margin-right:6px; border:1px solid #888; transition:0.1s; }
         .dot.lit { background:#00e676; box-shadow:0 0 10px #00e676; border-color:#fff; transform:scale(1.3); }
 
@@ -33,6 +33,8 @@
         .bar-bg { width:100%; height:6px; background:rgba(255,255,255,0.3); border-radius:3px; overflow:hidden; backdrop-filter:blur(5px); }
         .bar-fg { width:0%; height:100%; background:#00e676; box-shadow:0 0 10px rgba(0,230,118,0.5); transition:width 0.2s linear; }
         .tm { display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px; font-weight:600; opacity:0.9; }
+        
+        .btn-row { display:flex; justify-content:space-between; margin-top:15px; }
 
         /* 设置抽屉 */
         #set { position:absolute; bottom:0; left:0; width:100%; background:rgba(18,18,18,0.98); border-top:1px solid #333; border-radius:24px 24px 0 0; padding:30px; box-sizing:border-box; transform:translateY(110%); transition:transform 0.3s cubic-bezier(0.1, 0.7, 0.1, 1); z-index:20; pointer-events:auto; }
@@ -56,15 +58,16 @@
         .btn:active { transform:scale(0.95); }
         .btn-g { background:#00e676; color:#000; }
         .btn-b { background:#2979FF; color:#fff; }
-        .btn-s { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.3); color:#fff; padding:8px 20px; font-size:13px; border-radius:20px; backdrop-filter:blur(5px); }
+        .btn-s { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.3); color:#fff; padding:8px 20px; font-size:13px; border-radius:20px; backdrop-filter:blur(5px); display:flex; align-items:center; gap:5px; }
+        .btn-s:active { background:rgba(255,255,255,0.2); }
 
     </style>
 </head>
 <body>
 
     <div id="boot">
-        <h1 style="color:#00e676; margin-bottom:8px;">🏃 漫步 V11</h1>
-        <p style="color:#666; font-size:12px; margin-bottom:40px; letter-spacing:1px;">智能起步 · 顺滑算法 · VR反转</p>
+        <h1 style="color:#00e676; margin-bottom:8px;">🏃 漫步 V12</h1>
+        <p style="color:#666; font-size:12px; margin-bottom:40px; letter-spacing:1px;">智能引擎 · 回正视角 · 完美版</p>
         <button class="btn btn-b" onclick="document.getElementById('fi').click()">1. 选择视频</button>
         <input type="file" id="fi" accept="video/*" style="display:none" onchange="onF(this)">
         <div id="fn" style="color:#00e676; font-size:12px; height:20px;"></div>
@@ -89,8 +92,10 @@
         <div class="btm">
             <div class="tm"><span id="tc">0:00</span><span id="tt">0:00</span></div>
             <div class="bar-bg"><div class="bar-fg" id="pb"></div></div>
-            <div style="text-align:right; margin-top:15px">
-                <button class="btn-s" onclick="tSet()">⚙️ 设置 / VR</button>
+            
+            <div class="btn-row">
+                <button class="btn-s" onclick="recenter()">🎯 回正视角</button>
+                <button class="btn-s" onclick="tSet()">⚙️ 设置</button>
             </div>
         </div>
     </div>
@@ -113,24 +118,24 @@
         </div>
 
         <div style="text-align:center; margin-top:20px;">
-             <button class="btn-s" style="width:100%" onclick="sim()">🧪 模拟走一步</button>
+             <button class="btn-s" style="width:100%; justify-content:center;" onclick="sim()">🧪 模拟走一步</button>
         </div>
     </div>
 
     <script>
-        // --- 配置与状态 ---
+        // --- 核心变量 ---
         const C = { base:5, stride:0.7, sens:1.3, vr:25, vrInv:false };
         const S = { 
             run:false, steps:0, 
-            lastT:0,      // 上一步时间
-            hist:[],      // 历史步频缓冲 (用于平滑)
+            lastT:0,      
+            hist:[],      
             curr:0, target:0, 
             land:false, alpha0:null 
         };
         
         const vid = document.getElementById('vid');
         const dot = document.getElementById('dot');
-        let ac; // AudioContext
+        let ac; 
 
         function onF(el) {
             const f=el.files[0]; if(!f)return;
@@ -167,7 +172,6 @@
         function mot(e) {
             const a = e.accelerationIncludingGravity || e.acceleration;
             if(!a) return;
-            // 简单震动阈值检测
             const v = Math.sqrt(a.x**2 + a.y**2 + a.z**2);
             if(Math.abs(v - 9.8) > C.sens) trig();
         }
@@ -175,71 +179,50 @@
         function trig() {
             const now = Date.now();
             const diff = now - S.lastT;
-
-            // 防抖 (250ms)
             if(diff < 250) return;
 
-            // 视觉反馈：呼吸点
+            // 视觉反馈
             dot.classList.add('lit');
             setTimeout(()=>dot.classList.remove('lit'), 100);
-            fb(); // 震动+声音
+            fb(); 
 
             S.steps++;
             
-            // --- 智能起步算法 ---
-            // 如果停顿超过 2秒，视为重新起步
+            // 智能起步逻辑
             if (diff > 2000) {
-                // 恢复“弹射起步”：第一步直接给初速度，不等待，不卡顿
-                // 模拟 80步/分钟 的速度
+                // 冷启动：给予初始速度
                 const startSPM = 80; 
-                S.hist = [startSPM]; // 重置缓冲池
-                
-                // 立即计算速度，让视频秒动
+                S.hist = [startSPM];
                 const kmh = (startSPM * C.stride * 60) / 1000;
                 S.target = kmh / C.base;
-                
-                // 关键：为了不卡顿，让 curr 稍微跳跃一下，但也保留一点点平滑
                 if(S.curr < 0.1) S.curr = S.target * 0.5; 
-                
             } else {
-                // 连续行走：使用滑动平均算法，恢复顺滑感
+                // 连续行走：滑动平均
                 const spm = 60000 / diff;
                 S.hist.push(spm);
-                if(S.hist.length > 3) S.hist.shift(); // 只保留最近3步
-
-                // 取平均值
+                if(S.hist.length > 3) S.hist.shift();
                 let sum = 0; S.hist.forEach(v=>sum+=v);
                 const avgSPM = sum / S.hist.length;
-                
-                // 物理公式
                 const kmh = (avgSPM * C.stride * 60) / 1000;
                 S.target = kmh / C.base;
             }
-
             S.lastT = now;
         }
 
         function loop() {
             if(!S.run) return;
 
-            // 自动停车 (2秒超时)
-            if(Date.now() - S.lastT > 2000) {
-                S.target = 0;
-            }
+            // 自动停车
+            if(Date.now() - S.lastT > 2000) S.target = 0;
 
-            // 平滑过渡 (Lerp 0.1)
+            // 平滑过渡
             const d = S.target - S.curr;
             if(Math.abs(d) > 0.001) S.curr += d * 0.1;
             else S.curr = S.target;
 
-            // --- 播放器安全底座 ---
-            // 浏览器Video无法处理极低倍率(如0.001)，会导致UI卡死。
-            // 这里我们设置一个安全底线 0.06x。
-            // 只要低于这个值，我们就暂停，防止卡死。
-            // 只要高于这个值，我们就算它是 0.2x 哪怕很慢，也让它播。
+            // 防卡死底座 (0.06x)
             if(S.curr < 0.06) {
                 if(!vid.paused) vid.pause();
-                // 注意：这里不把 S.curr 强制设为0，保留其数值以便平滑恢复，只是不给播放器赋值
             } else {
                 vid.playbackRate = S.curr;
                 if(vid.paused) vid.play().catch(()=>{});
@@ -250,7 +233,6 @@
         }
 
         function draw() {
-            // 显示时如果暂停了就显示0，否则显示真实计算值
             const showRate = (S.curr < 0.06) ? 0 : S.curr;
             const kmh = showRate * C.base;
             
@@ -268,16 +250,23 @@
 
         function ori(e) {
             if(!S.land || !e.alpha) return;
+            // 初始化或回正逻辑
             if(S.alpha0 === null) S.alpha0 = e.alpha;
+            
             let d = e.alpha - S.alpha0;
             if(d > 180) d -= 360; if(d < -180) d += 360;
             d = Math.max(-C.vr, Math.min(C.vr, d));
             
-            // VR反转逻辑
-            let move = d * -0.8; // 默认逻辑
-            if(C.vrInv) move = move * -1; // 反转
+            let move = d * -0.8; 
+            if(C.vrInv) move = move * -1;
             
             vid.style.transform = `translateX(${move}%)`;
+        }
+
+        // 新增：回正功能
+        function recenter() {
+            S.alpha0 = null; // 下一帧自动重新校准
+            vid.style.transform = `translateX(0%)`; // 视觉即时反馈
         }
 
         function fb() {
