@@ -3,62 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>漫步 V12 - 最终完成版</title>
+    <title>漫步 V13 - 强力归零版</title>
     <style>
-        /* --- 全局样式 --- */
+        /* --- 全局 --- */
         body, html { margin:0; padding:0; width:100%; height:100%; background:#000; overflow:hidden; font-family:-apple-system, BlinkMacSystemFont, Roboto, sans-serif; user-select:none; -webkit-tap-highlight-color:transparent; color:white; }
         
-        /* 视频容器 */
+        /* 视频：平滑位移 */
         #v-wrap { position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; display:flex; align-items:center; justify-content:center; }
         video { width:100%; height:100%; object-fit:cover; transition:transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
 
         /* UI层 */
-        #ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; text-shadow:0 1px 5px rgba(0,0,0,1); }
+        #ui { position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; text-shadow:0 2px 8px rgba(0,0,0,1); }
         
-        /* 顶部数据 */
+        /* 顶部 */
         .top { padding:25px; display:flex; justify-content:space-between; align-items:flex-start; }
         .grp { display:flex; flex-direction:column; }
         .grp-r { text-align:right; align-items:flex-end; }
         
-        .txt-main { font-size:56px; font-weight:800; line-height:0.9; font-variant-numeric:tabular-nums; }
+        .txt-main { font-size:60px; font-weight:900; line-height:0.9; font-variant-numeric:tabular-nums; }
         .txt-lbl { font-size:12px; font-weight:700; color:#ccc; margin-top:5px; text-transform:uppercase; letter-spacing:1px; }
-        .txt-sub { font-size:16px; font-weight:700; color:#00e676; margin-top:5px; }
+        .txt-sub { font-size:18px; font-weight:700; color:#00e676; margin-top:5px; }
 
         /* 呼吸点 */
-        .dot { display:inline-block; width:10px; height:10px; background:#444; border-radius:50%; margin-right:6px; border:1px solid #888; transition:0.1s; }
-        .dot.lit { background:#00e676; box-shadow:0 0 10px #00e676; border-color:#fff; transform:scale(1.3); }
+        .dot { display:inline-block; width:12px; height:12px; background:#444; border-radius:50%; margin-right:8px; border:1px solid #888; transition:0.1s; }
+        .dot.lit { background:#00e676; box-shadow:0 0 15px #00e676; border-color:#fff; transform:scale(1.4); }
 
-        /* 底部控制 */
-        .btm { padding:25px; pointer-events:auto; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent); }
-        .bar-bg { width:100%; height:6px; background:rgba(255,255,255,0.3); border-radius:3px; overflow:hidden; backdrop-filter:blur(5px); }
-        .bar-fg { width:0%; height:100%; background:#00e676; box-shadow:0 0 10px rgba(0,230,118,0.5); transition:width 0.2s linear; }
-        .tm { display:flex; justify-content:space-between; font-size:12px; margin-bottom:8px; font-weight:600; opacity:0.9; }
+        /* 底部 */
+        .btm { padding:25px; pointer-events:auto; background:linear-gradient(to top, rgba(0,0,0,0.95), transparent); }
+        .bar-bg { width:100%; height:8px; background:rgba(255,255,255,0.2); border-radius:4px; overflow:hidden; backdrop-filter:blur(5px); }
+        .bar-fg { width:0%; height:100%; background:#00e676; box-shadow:0 0 15px rgba(0,230,118,0.6); transition:width 0.2s linear; }
+        .tm { display:flex; justify-content:space-between; font-size:12px; margin-bottom:10px; font-weight:600; opacity:0.8; }
         
-        .btn-row { display:flex; justify-content:space-between; margin-top:15px; }
+        .btn-row { display:flex; justify-content:space-between; margin-top:20px; gap:10px; }
 
         /* 设置抽屉 */
-        #set { position:absolute; bottom:0; left:0; width:100%; background:rgba(18,18,18,0.98); border-top:1px solid #333; border-radius:24px 24px 0 0; padding:30px; box-sizing:border-box; transform:translateY(110%); transition:transform 0.3s cubic-bezier(0.1, 0.7, 0.1, 1); z-index:20; pointer-events:auto; }
+        #set { position:absolute; bottom:0; left:0; width:100%; background:rgba(15,15,15,0.98); border-top:1px solid #333; border-radius:24px 24px 0 0; padding:30px; box-sizing:border-box; transform:translateY(110%); transition:transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); z-index:20; pointer-events:auto; }
         #set.show { transform:translateY(0); }
         
         .row { margin-bottom:25px; }
         .rh { display:flex; justify-content:space-between; margin-bottom:12px; font-size:14px; color:#aaa; font-weight:600; }
         .rv { color:#00e676; }
         input[type=range] { width:100%; height:6px; background:#333; border-radius:3px; -webkit-appearance:none; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:24px; height:24px; background:#fff; border-radius:50%; box-shadow:0 2px 6px rgba(0,0,0,0.5); }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:24px; height:24px; background:#fff; border-radius:50%; box-shadow:0 4px 8px rgba(0,0,0,0.6); }
         
         .tgl-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; font-size:14px; color:#ddd; font-weight:600; }
-        .tgl { width:50px; height:28px; background:#444; border-radius:14px; position:relative; transition:0.3s; cursor:pointer; }
-        .tgl::after { content:''; position:absolute; top:2px; left:2px; width:24px; height:24px; background:#fff; border-radius:50%; transition:0.3s; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
+        .tgl { width:52px; height:30px; background:#444; border-radius:15px; position:relative; transition:0.3s; cursor:pointer; }
+        .tgl::after { content:''; position:absolute; top:2px; left:2px; width:26px; height:26px; background:#fff; border-radius:50%; transition:0.3s; box-shadow:0 1px 3px rgba(0,0,0,0.3); }
         .tgl.on { background:#00e676; }
         .tgl.on::after { left:24px; }
 
         /* 启动页 */
-        #boot { position:absolute; top:0; left:0; width:100%; height:100%; background:#000; z-index:99; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-        .btn { padding:16px 40px; border-radius:50px; font-size:17px; font-weight:700; border:none; margin:12px; cursor:pointer; transition:transform 0.1s; }
+        #boot { position:absolute; top:0; left:0; width:100%; height:100%; background:#050505; z-index:99; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+        .btn { padding:18px 45px; border-radius:50px; font-size:18px; font-weight:700; border:none; margin:15px; cursor:pointer; transition:transform 0.1s; }
         .btn:active { transform:scale(0.95); }
-        .btn-g { background:#00e676; color:#000; }
+        .btn-g { background:#00e676; color:#000; box-shadow:0 0 20px rgba(0,230,118,0.3); }
         .btn-b { background:#2979FF; color:#fff; }
-        .btn-s { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.3); color:#fff; padding:8px 20px; font-size:13px; border-radius:20px; backdrop-filter:blur(5px); display:flex; align-items:center; gap:5px; }
+        .btn-s { flex:1; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#fff; padding:12px; font-size:14px; border-radius:16px; backdrop-filter:blur(10px); display:flex; align-items:center; justify-content:center; }
         .btn-s:active { background:rgba(255,255,255,0.2); }
 
     </style>
@@ -66,8 +66,8 @@
 <body>
 
     <div id="boot">
-        <h1 style="color:#00e676; margin-bottom:8px;">🏃 漫步 V12</h1>
-        <p style="color:#666; font-size:12px; margin-bottom:40px; letter-spacing:1px;">智能引擎 · 回正视角 · 完美版</p>
+        <h1 style="color:#00e676; margin-bottom:10px;">🏃 漫步 V13</h1>
+        <p style="color:#666; font-size:12px; margin-bottom:50px; letter-spacing:1px;">强力归零 · 瞬时响应</p>
         <button class="btn btn-b" onclick="document.getElementById('fi').click()">1. 选择视频</button>
         <input type="file" id="fi" accept="video/*" style="display:none" onchange="onF(this)">
         <div id="fn" style="color:#00e676; font-size:12px; height:20px;"></div>
@@ -81,7 +81,7 @@
             <div class="grp">
                 <div class="txt-main" id="d-spd">0.0</div>
                 <div class="txt-lbl">时速 km/h</div>
-                <div class="txt-sub" id="d-rat">0.0 x</div>
+                <div class="txt-sub" id="d-rat">0.00 x</div>
             </div>
             <div class="grp grp-r">
                 <div class="txt-main" id="d-stp">0</div>
@@ -101,29 +101,29 @@
     </div>
 
     <div id="set">
-        <div style="display:flex;justify-content:space-between;margin-bottom:25px;align-items:center;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:30px;align-items:center;">
             <h3 style="margin:0">设置</h3>
-            <span onclick="tSet()" style="font-size:24px;color:#888;cursor:pointer;">×</span>
+            <span onclick="tSet()" style="font-size:28px;color:#666;cursor:pointer;">×</span>
         </div>
 
         <div class="row"><div class="rh"><span>原视频速度</span><span class="rv" id="vb">5 km/h</span></div><input type="range" min="2" max="15" value="5" oninput="uC('base',this.value)"></div>
         <div class="row"><div class="rh"><span>我的步长</span><span class="rv" id="vs">0.70 m</span></div><input type="range" min="0.4" max="1.2" step="0.05" value="0.7" oninput="uC('stride',this.value)"></div>
         <div class="row"><div class="rh"><span>灵敏度 (1=最灵敏)</span><span class="rv" id="vse">1.3</span></div><input type="range" min="0.8" max="3.0" step="0.1" value="1.3" oninput="uC('sens',this.value)"></div>
         
-        <div style="height:1px; background:#333; margin:20px 0;"></div>
+        <div style="height:1px; background:#333; margin:25px 0;"></div>
         
         <div class="tgl-row" onclick="uT('vrInv')">
             <span>🔄 VR 方向反转</span>
             <div class="tgl" id="t-vr"></div>
         </div>
 
-        <div style="text-align:center; margin-top:20px;">
-             <button class="btn-s" style="width:100%; justify-content:center;" onclick="sim()">🧪 模拟走一步</button>
+        <div style="text-align:center; margin-top:30px;">
+             <button class="btn-s" style="width:100%; border-color:#00e676; color:#00e676;" onclick="sim()">⚡ 模拟触发 (测试)</button>
         </div>
     </div>
 
     <script>
-        // --- 核心变量 ---
+        // --- 核心配置 ---
         const C = { base:5, stride:0.7, sens:1.3, vr:25, vrInv:false };
         const S = { 
             run:false, steps:0, 
@@ -168,7 +168,7 @@
             window.addEventListener('deviceorientation', ori);
         }
 
-        // --- 核心：运动引擎 V11 ---
+        // --- 运动引擎 V13 ---
         function mot(e) {
             const a = e.accelerationIncludingGravity || e.acceleration;
             if(!a) return;
@@ -179,49 +179,62 @@
         function trig() {
             const now = Date.now();
             const diff = now - S.lastT;
+
             if(diff < 250) return;
 
-            // 视觉反馈
+            // 反馈
             dot.classList.add('lit');
             setTimeout(()=>dot.classList.remove('lit'), 100);
             fb(); 
 
             S.steps++;
             
-            // 智能起步逻辑
-            if (diff > 2000) {
-                // 冷启动：给予初始速度
+            // 判定：如果距离上次触发超过 1.2秒，视为“新起步”
+            // (之前是2.0秒，现在改短，防止拖沓)
+            if (diff > 1200) {
+                // 冷启动逻辑
                 const startSPM = 80; 
                 S.hist = [startSPM];
                 const kmh = (startSPM * C.stride * 60) / 1000;
                 S.target = kmh / C.base;
-                if(S.curr < 0.1) S.curr = S.target * 0.5; 
+                
+                // 强制提升当前速度，避免从0慢慢爬
+                if(S.curr < 0.1) S.curr = S.target * 0.6; 
+                
             } else {
-                // 连续行走：滑动平均
+                // 连续行走
                 const spm = 60000 / diff;
                 S.hist.push(spm);
                 if(S.hist.length > 3) S.hist.shift();
+
                 let sum = 0; S.hist.forEach(v=>sum+=v);
                 const avgSPM = sum / S.hist.length;
+                
                 const kmh = (avgSPM * C.stride * 60) / 1000;
                 S.target = kmh / C.base;
             }
+
             S.lastT = now;
         }
 
         function loop() {
             if(!S.run) return;
 
-            // 自动停车
-            if(Date.now() - S.lastT > 2000) S.target = 0;
+            // 自动停车检测 (1.2秒超时)
+            if(Date.now() - S.lastT > 1200) {
+                S.target = 0;
+            }
 
-            // 平滑过渡
+            // 平滑计算
             const d = S.target - S.curr;
             if(Math.abs(d) > 0.001) S.curr += d * 0.1;
             else S.curr = S.target;
 
-            // 防卡死底座 (0.06x)
-            if(S.curr < 0.06) {
+            // === 核心修复 V13：强力归零 ===
+            // 如果倍率掉到 0.08 以下，直接强制设为 0。
+            // 绝不让它停留在 0.07 这种尴尬数值。
+            if(S.curr < 0.08) {
+                S.curr = 0; // 强制写0
                 if(!vid.paused) vid.pause();
             } else {
                 vid.playbackRate = S.curr;
@@ -233,11 +246,11 @@
         }
 
         function draw() {
-            const showRate = (S.curr < 0.06) ? 0 : S.curr;
-            const kmh = showRate * C.base;
+            const kmh = S.curr * C.base;
             
             document.getElementById('d-spd').innerText = kmh.toFixed(1);
-            document.getElementById('d-rat').innerText = showRate.toFixed(2)+" x";
+            // 这里 S.curr 已经被强制为0了，所以 UI 肯定显示 0.00 x
+            document.getElementById('d-rat').innerText = S.curr.toFixed(2)+" x";
             document.getElementById('d-stp').innerText = S.steps;
             document.getElementById('d-dst').innerText = ((S.steps*C.stride)/1000).toFixed(2)+" km";
             
@@ -250,7 +263,6 @@
 
         function ori(e) {
             if(!S.land || !e.alpha) return;
-            // 初始化或回正逻辑
             if(S.alpha0 === null) S.alpha0 = e.alpha;
             
             let d = e.alpha - S.alpha0;
@@ -262,11 +274,10 @@
             
             vid.style.transform = `translateX(${move}%)`;
         }
-
-        // 新增：回正功能
+        
         function recenter() {
-            S.alpha0 = null; // 下一帧自动重新校准
-            vid.style.transform = `translateX(0%)`; // 视觉即时反馈
+            S.alpha0 = null;
+            vid.style.transform = `translateX(0%)`;
         }
 
         function fb() {
@@ -274,7 +285,7 @@
             if(ac && ac.state==='running') {
                 const o=ac.createOscillator(), g=ac.createGain();
                 o.connect(g); g.connect(ac.destination);
-                o.frequency.setValueAtTime(120, ac.currentTime);
+                o.frequency.setValueAtTime(100, ac.currentTime);
                 o.frequency.exponentialRampToValueAtTime(0.01, ac.currentTime+0.1);
                 g.gain.setValueAtTime(0.2, ac.currentTime);
                 g.gain.exponentialRampToValueAtTime(0.01, ac.currentTime+0.1);
